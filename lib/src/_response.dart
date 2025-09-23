@@ -26,7 +26,6 @@ class ResolveResponse {
     required this.cd,
     required this.comment,
     required this.answer,
-    required this.questions,
   });
 
   /// The status code indicating the result of the DNS resolution.
@@ -53,9 +52,6 @@ class ResolveResponse {
   /// The resolved answer containing DNS records.
   final _Answer? answer;
 
-  /// List of questions queried in the resolution request.
-  final List<_Question>? questions;
-
   /// Constructs a [ResolveResponse] instance from JSON data.
   ///
   /// The [json] parameter should be a map containing the fields of a DNS
@@ -71,17 +67,9 @@ class ResolveResponse {
         cd: json['CD'] as bool?,
         comment: json['comment'] as String?,
         answer: _Answer.fromJson(json['Answer'] as List<dynamic>?),
-        questions: json['Question'] == null
-            ? null
-            : (json['Question'] as List<dynamic>)
-                .map(
-                  (question) =>
-                      _Question.fromJson(question as Map<String, dynamic>),
-                )
-                .toList(),
       );
 
   @override
   String toString() =>
-      '''status: $status, truncation: $tc, recursion desired(rd): $rd, recursion available(ra): $ra, authenticated data(ad): $ad, checking disabled(cd): $cd, comment: $comment, answer: $answer, questions: $questions''';
+      '''status: $status, truncation: $tc, recursion desired(rd): $rd, recursion available(ra): $ra, authenticated data(ad): $ad, checking disabled(cd): $cd, comment: $comment, answer: $answer''';
 }

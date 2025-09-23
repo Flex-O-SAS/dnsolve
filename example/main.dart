@@ -1,18 +1,20 @@
-import 'dart:developer';
-
 import 'package:dnsolve/dnsolve.dart';
 
-Future<void> main() async {
+void main() {
+  solve();
+}
+
+Future<void> solve() async {
   final dnsolve = DNSolve();
   final response = await dnsolve.lookup(
-    '_xmpp._tcp.vsevex.me',
+    'demo._discovery.saas-office.io',
     dnsSec: true,
-    type: RecordType.srv,
+    type: RecordType.cname,
   );
 
   if (response.answer!.records != null) {
     for (final record in response.answer!.records!) {
-      log(record.toBind);
+      print(record.toBind);
     }
   }
 }

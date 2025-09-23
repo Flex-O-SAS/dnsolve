@@ -31,6 +31,10 @@ class ResponseException extends DNSolveException {
       '''Exception(Status Code: $statusCode, Response Headers: $headers, Response Body: $body)''';
 }
 
+class AllProvidersFailedException extends DNSolveException {
+  const AllProvidersFailedException();
+}
+
 /// An exception indicating that an error occurred while parsing or processing a
 /// Service (SRV) record.
 ///

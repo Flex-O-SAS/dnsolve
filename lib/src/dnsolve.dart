@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:dnsolve/src/exception.dart';
-
 import 'package:http/http.dart' as http;
 
 part '_answer.dart';
@@ -39,6 +38,13 @@ enum RecordType {
   mx,
 }
 
+const _defaultDnsProviders = [
+  'https://dns.google.com/resolve',
+  'https://cloudflare-dns.com/dns-query',
+  'https://dns.adguard-dns.com/resolve',
+  'https://223.5.5.5/resolve',
+];
+
 /// An enumeration that represents different DNS service providers.
 enum DNSProvider { google, cloudflare }
 
@@ -48,13 +54,6 @@ class DNSolve {
   }
 
   late final http.Client _client;
-
-  /// A map that associates [DNSProvider] enum values with their respective DNS
-  /// provider URLs.
-  static const _dnsProviders = <DNSProvider, String>{
-    DNSProvider.google: 'https://dns.google.com/resolve',
-    DNSProvider.cloudflare: 'https://cloudflare-dns.com/dns-query',
-  };
 
   /// Performs a DNS lookup for the given domain.
   Future<ResolveResponse> lookup(
@@ -67,9 +66,10 @@ class DNSolve {
     RecordType type = RecordType.A,
 
     /// The DNS provider to use (defaults to Google).
-    DNSProvider provider = DNSProvider.google,
+    List<String> providers = _defaultDnsProviders,
   }) async {
     assert(domain.isNotEmpty, 'domain should not be empty');
+    assert(providers.isNotEmpty, 'providers should not be empty');
 
     final queryParams = <String, String>{};
     queryParams
@@ -78,21 +78,35 @@ class DNSolve {
       ..putIfAbsent('dnssec', () => dnsSec.toString());
 
     final headers = <String, String>{'Accept': 'application/dns-json'};
-    final url = _dnsProviders[provider] ?? 'https://dns.google.com/resolve';
+    Exception? lastException;
+    for (final url in providers) {
+      try {
+        final body =
+            await _get(url, queryParameters: queryParams, headers: headers);
 
-    final body =
-        await _get(url, queryParameters: queryParams, headers: headers);
-
-    return ResolveResponse.fromJson(json.decode(body) as Map<String, dynamic>);
+        return ResolveResponse.fromJson(
+            json.decode(body) as Map<String, dynamic>);
+      } on Exception catch (e) {
+        lastException = e;
+        // Try the next provider
+        continue;
+      }
+    }
+    if (lastException == null) {
+      throw const AllProvidersFailedException();
+    }
+    throw lastException;
   }
 
   /// Performs a reverse DNS lookup for the given IP address.
   Future<List<_Record>> reverseLookup(
     /// The IP address to perform a reverse lookup for.
     String ip, {
-    /// THE DNS provider to use (defaults to Google).
-    DNSProvider provider = DNSProvider.google,
+    /// The DNS provider to use (defaults to Google).
+    List<String> providers = _defaultDnsProviders,
   }) async {
+    assert(providers.isNotEmpty, 'providers should not be empty');
+
     final queryParams = <String, String>{};
     String? reverse() {
       if (ip.contains('.')) {
@@ -114,13 +128,25 @@ class DNSolve {
       ..putIfAbsent('type', () => _records[RecordType.ptr]!.toString());
 
     final headers = <String, String>{'Accept': 'application/dns-json'};
-    final url = _dnsProviders[provider] ?? 'https://dns.google.com/resolve';
 
-    final body =
-        await _get(url, queryParameters: queryParams, headers: headers);
-    final response =
-        ResolveResponse.fromJson(json.decode(body) as Map<String, dynamic>);
-    return response.answer!.records ?? [];
+    Exception? lastException;
+    for (final url in providers) {
+      try {
+        final body =
+            await _get(url, queryParameters: queryParams, headers: headers);
+        final response =
+            ResolveResponse.fromJson(json.decode(body) as Map<String, dynamic>);
+        return response.answer!.records ?? [];
+      } on Exception catch (e) {
+        lastException = e;
+        // Try the next provider
+        continue;
+      }
+    }
+    if (lastException == null) {
+      throw const AllProvidersFailedException();
+    }
+    throw lastException;
   }
 
   /// Sends an HTTP GET request to the specified URL with optional query
