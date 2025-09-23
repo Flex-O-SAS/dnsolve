@@ -4,7 +4,6 @@ import 'package:dnsolve/src/exception.dart';
 import 'package:http/http.dart' as http;
 
 part '_answer.dart';
-part '_question.dart';
 part '_response.dart';
 
 /// An enumeration that represents various DNS record types.
